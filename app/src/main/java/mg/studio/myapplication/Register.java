@@ -2,6 +2,8 @@ package mg.studio.myapplication;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.net.Uri;
+import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -10,16 +12,18 @@ import android.widget.Button;
 import android.widget.EditText;
 import android.widget.Toast;
 
-import com.android.volley.Request;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
-import com.android.volley.toolbox.StringRequest;
-
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.InputStreamReader;
+import java.io.Reader;
+import java.io.UnsupportedEncodingException;
+import java.net.HttpURLConnection;
+import java.net.MalformedURLException;
+import java.net.URL;
+
 
 /**
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -42,7 +46,7 @@ public class Register extends AppCompatActivity {
     private EditText inputFullName;
     private EditText inputEmail;
     private EditText inputPassword;
-    private ProgressDialog pDialog;
+    public ProgressDialog pDialog;
     private SessionManager session;
     private SQLiteHandler db;
 
@@ -51,11 +55,11 @@ public class Register extends AppCompatActivity {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.register);
 
-        inputFullName = (EditText) findViewById(R.id.name);
-        inputEmail = (EditText) findViewById(R.id.email);
-        inputPassword = (EditText) findViewById(R.id.password);
-        btnRegister = (Button) findViewById(R.id.btnRegister);
-        btnLinkToLogin = (Button) findViewById(R.id.btnLinkToLoginScreen);
+        inputFullName = findViewById(R.id.name);
+        inputEmail = findViewById(R.id.email);
+        inputPassword = findViewById(R.id.password);
+        btnRegister = findViewById(R.id.btnRegister);
+        btnLinkToLogin = findViewById(R.id.btnLinkToLoginScreen);
 
         // Progress dialog
         pDialog = new ProgressDialog(this);
@@ -118,88 +122,135 @@ public class Register extends AppCompatActivity {
         pDialog.setMessage("Registering ...");
         showDialog();
 
-        StringRequest strReq = new StringRequest(Request.Method.POST,
-                Config.URL_REGISTER, new Response.Listener<String>() {
+        new DownloadData().execute(name, email, password);
 
-            @Override
-            public void onResponse(String response) {
-                Log.d(TAG, "Register Response: " + response.toString());
-                /*
-                hideDialog();
-
-                try {
-                    JSONObject jObj = new JSONObject(response);
-                    boolean error = jObj.getBoolean("error");
-                    if (!error) {
-                        // User successfully stored in MySQL
-                        // Now store the user in sqlite
-                        String uid = jObj.getString("uid");
-
-                        JSONObject user = jObj.getJSONObject("user");
-                        String name = user.getString("name");
-                        String email = user.getString("email");
-                        String created_at = user
-                                .getString("created_at");
-
-                        // Inserting row in users table
-                        db.addUser(name, email, uid, created_at);
-
-                        Toast.makeText(getApplicationContext(), "User successfully registered. Try login now!", Toast.LENGTH_LONG).show();
-
-                        // Launch login activity
-                        Intent intent = new Intent(
-                                Register.this,
-                                Login.class);
-                        startActivity(intent);
-                        finish();
-                    } else {
-
-                        // Error occurred in registration. Get the error
-                        // message
-                        String errorMsg = jObj.getString("error_msg");
-                        Toast.makeText(getApplicationContext(),
-                                errorMsg, Toast.LENGTH_LONG).show();
-                    }
-                } catch (JSONException e) {
-                    e.printStackTrace();
-                }
-                */
-            }
-        }, new Response.ErrorListener() {
-
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.e(TAG, "Registration Error: " + error.getMessage());
-                Toast.makeText(getApplicationContext(),
-                        error.getMessage(), Toast.LENGTH_LONG).show();
-                hideDialog();
-            }
-        }) {
-
-            @Override
-            protected Map<String, String> getParams() {
-                // Posting params to register url
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("name", name);
-                params.put("email", email);
-                params.put("password", password);
-
-                return params;
-            }
-
-        };
-
-        // Adding request to request queue
-        Controller.getInstance().addToRequestQueue(strReq, tag_string_req);
     }
 
-    private void showDialog() {
+    public void showDialog() {
         if (!pDialog.isShowing())
             pDialog.show();
     }
 
-    private void hideDialog() {
+    public void hideDialog() {
         if (pDialog.isShowing())
             pDialog.dismiss();
+    }
+}
+
+class DownloadData extends AsyncTask<String, Void, String> {
+    @Override
+    protected String doInBackground(String... strings) {
+
+        String response = null;
+
+
+        // Building the URL
+        final String BASE_URL = new Config().getRegisterUrl();
+        final String NAME = "name";
+        final String EMAIL = "email";
+        final String PASSWORD = "password";
+
+
+        Uri buildUri = Uri.parse(BASE_URL)
+                .buildUpon()
+                .appendQueryParameter(NAME, strings[0])
+                .appendQueryParameter(EMAIL, strings[1])
+                .appendQueryParameter(PASSWORD, strings[2])
+                .build();
+
+        Log.d("TAG", "URI - " + buildUri);
+
+        try {
+            URL url = new URL(buildUri.toString());
+
+            response = downloadUrl(url);
+
+        } catch (MalformedURLException e) {
+            Log.e("TAG", "URL - " + e.toString());
+        } catch (IOException e) {
+            Log.e("TAG", "Download - " + e.toString());
+        }
+        return response;
+
+    }
+
+
+    @Override
+    protected void onPostExecute(String s) {
+
+        Log.d("TAG", "onPostExecute () " + s);
+    }
+
+
+    /**
+     * Given a URL, sets up a connection and gets the HTTP response body from the server.
+     * If the network request is successful, it returns the response body in String form. Otherwise,
+     * it will throw an IOException.
+     */
+
+    private String downloadUrl(URL url) throws IOException {
+
+        InputStream stream = null;
+        //HttpsURLConnection connection = null;
+        HttpURLConnection connection = null;
+        String result = null;
+        try {
+            connection = (HttpURLConnection) url.openConnection();
+            // Timeout for reading InputStream arbitrarily set to 3000ms.
+            connection.setReadTimeout(3000);
+            // Timeout for connection.connect() arbitrarily set to 3000ms.
+            connection.setConnectTimeout(3000);
+            // For this use case, set HTTP method to GET.
+            connection.setRequestMethod("GET");
+            // Already true by default but setting just in case; needs to be true since this request
+            // is carrying an input (response) body.
+            connection.setDoInput(true);
+            // Open communications link (network traffic occurs here).
+            connection.connect();
+
+            int responseCode = connection.getResponseCode();
+            if (responseCode != HttpURLConnection.HTTP_OK) {
+                throw new IOException("HTTP error code: " + responseCode);
+            }
+            // Retrieve the response body as an InputStream.
+            stream = connection.getInputStream();
+
+            if (stream != null) {
+                // Converts Stream to String with max length of 500.
+                result = readStream(stream, 500);
+            }
+        } finally {
+            // Close Stream and disconnect HTTPS connection.
+            if (stream != null) {
+                stream.close();
+            }
+            if (connection != null) {
+                connection.disconnect();
+            }
+        }
+        return result;
+    }
+
+
+    /**
+     * Converts the contents of an InputStream to a String.
+     */
+    public String readStream(InputStream stream, int maxReadSize)
+            throws IOException, UnsupportedEncodingException {
+        Reader reader = null;
+        reader = new InputStreamReader(stream, "UTF-8");
+        char[] rawBuffer = new char[maxReadSize];
+        int readSize;
+        StringBuffer buffer = new StringBuffer();
+        while (((readSize = reader.read(rawBuffer)) != -1) && maxReadSize > 0) {
+            if (readSize > maxReadSize) {
+                readSize = maxReadSize;
+            }
+            buffer.append(rawBuffer, 0, readSize);
+            maxReadSize -= readSize;
+        }
+
+        Log.d("TAG", buffer.toString());
+        return buffer.toString();
     }
 }
