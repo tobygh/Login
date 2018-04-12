@@ -2,7 +2,6 @@ package mg.studio.myapplication;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
-import android.net.Uri;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -15,11 +14,12 @@ import android.widget.Toast;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.io.BufferedInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStreamWriter;
 import java.io.Reader;
-import java.io.UnsupportedEncodingException;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
@@ -36,9 +36,6 @@ import java.net.URL;
  */
 
 
-//This file was generated on 4/9/18
-
-
 public class Register extends AppCompatActivity {
     private static final String TAG = Register.class.getSimpleName();
     private Button btnRegister;
@@ -46,9 +43,10 @@ public class Register extends AppCompatActivity {
     private EditText inputFullName;
     private EditText inputEmail;
     private EditText inputPassword;
-    public ProgressDialog pDialog;
     private SessionManager session;
-    private SQLiteHandler db;
+    private ProgressDialog pDialog;
+    private String name;
+    Feedback feedback;
 
     @Override
     public void onCreate(Bundle savedInstanceState) {
@@ -61,34 +59,35 @@ public class Register extends AppCompatActivity {
         btnRegister = findViewById(R.id.btnRegister);
         btnLinkToLogin = findViewById(R.id.btnLinkToLoginScreen);
 
-        // Progress dialog
+
+        // Preparing the Progress dialog
         pDialog = new ProgressDialog(this);
         pDialog.setCancelable(false);
 
+
         // Session manager
         session = new SessionManager(getApplicationContext());
-
-        // SQLite database handler
-        db = new SQLiteHandler(getApplicationContext());
-
         // Check if user is already logged in or not
         if (session.isLoggedIn()) {
             // User is already logged in. Take him to main activity
-            Intent intent = new Intent(Register.this,
-                    MainActivity.class);
-            startActivity(intent);
+            startActivity(new Intent(this, MainActivity.class));
             finish();
         }
 
         // Register Button Click event
         btnRegister.setOnClickListener(new View.OnClickListener() {
             public void onClick(View view) {
-                String name = inputFullName.getText().toString().trim();
+                name = inputFullName.getText().toString().trim();
                 String email = inputEmail.getText().toString().trim();
                 String password = inputPassword.getText().toString().trim();
 
                 if (!name.isEmpty() && !email.isEmpty() && !password.isEmpty()) {
+                    // Avoid repeated clicks by disabling the button
+                    btnRegister.setClickable(false);
+                    //Register the user
                     registerUser(name, email, password);
+
+
                 } else {
                     Toast.makeText(getApplicationContext(),
                             "Please enter your details!", Toast.LENGTH_LONG)
@@ -111,146 +110,164 @@ public class Register extends AppCompatActivity {
     }
 
     /**
-     * Function to store user in MySQL database will post params(tag, name,
-     * email, password) to register url
+     * Register a new user to the server database
+     *
+     * @param name     username
+     * @param email    email address, which should be unique to the user
+     * @param password length should be < 50 characters
      */
     private void registerUser(final String name, final String email,
                               final String password) {
-        // Tag used to cancel the request
-        String tag_string_req = "req_register";
 
         pDialog.setMessage("Registering ...");
-        showDialog();
-
+        if (!pDialog.isShowing()) pDialog.show();
+        //Todo: Need to check Internet connection
         new DownloadData().execute(name, email, password);
 
+
     }
 
-    public void showDialog() {
-        if (!pDialog.isShowing())
-            pDialog.show();
+
+    class DownloadData extends AsyncTask<String, Void, Integer> {
+
+
+        @Override
+        protected Integer doInBackground(String... strings) {
+            feedback = new Feedback();
+
+            String response = null;
+            OutputStreamWriter request = null;
+            int parsingFeedback = feedback.FAIL;
+
+
+            // Variables
+            final String BASE_URL = new Config().getRegisterUrl();
+            final String NAME = "name";
+            final String EMAIL = "email";
+            final String PASSWORD = "password";
+            final String PARAMS = NAME + "=" + strings[0] + "&" + EMAIL + "=" + strings[1] + "&" + PASSWORD + "=" + strings[2];
+
+
+            URL url = null;
+            HttpURLConnection connection = null;
+            try {
+                url = new URL(BASE_URL);
+                connection = (HttpURLConnection) url.openConnection();
+                //Set the request method to POST
+                connection.setRequestMethod("POST");
+                connection.setRequestProperty("Content-Type", "application/x-www-form-urlencoded");
+                connection.setDoOutput(true);
+
+                // Timeout for reading InputStream arbitrarily set to 3000ms.
+                connection.setReadTimeout(9000);
+                // Timeout for connection.connect() arbitrarily set to 3000ms.
+                connection.setConnectTimeout(9000);
+
+                // Output the stream to the server
+                request = new OutputStreamWriter(connection.getOutputStream());
+                request.write(PARAMS);
+                request.flush();
+                request.close();
+
+                // Get the inputStream using the same connection
+                InputStream inputStream = new BufferedInputStream(connection.getInputStream());
+                response = readStream(inputStream, 500);
+                inputStream.close();
+
+                // Parsing the response
+                parsingFeedback = parsingResponse(response);
+
+
+            } catch (MalformedURLException e) {
+                Log.e("TAG", "URL - " + e);
+                feedback.setError_message(e.toString());
+                return feedback.FAIL;
+            } catch (IOException e) {
+                Log.e("TAG", "openConnection() - " + e);
+                feedback.setError_message(e.toString());
+                return feedback.FAIL;
+            } finally {
+                if (connection != null) // Make sure the connection is not null before disconnecting
+                    connection.disconnect();
+                Log.d("TAG", "Response " + response);
+
+                return parsingFeedback;
+            }
+
+
+        }
+
+
+        @Override
+        protected void onPostExecute(Integer mFeedback) {
+            super.onPostExecute(mFeedback);
+            if (pDialog.isShowing()) pDialog.dismiss();
+            if (mFeedback == feedback.SUCCESS) {
+                Intent intent = new Intent(getApplication(), Login.class);
+                intent.putExtra("feedback", feedback);
+                startActivity(intent);
+            } else {
+                btnRegister.setClickable(true);
+                Toast.makeText(getApplication(), feedback.getError_message(), Toast.LENGTH_SHORT).show();
+            }
+
+        }
+
+        /**
+         * Converts the contents of an InputStream to a String.
+         */
+        String readStream(InputStream stream, int maxReadSize)
+                throws IOException {
+            Reader reader = null;
+            reader = new InputStreamReader(stream, "UTF-8");
+            char[] rawBuffer = new char[maxReadSize];
+            int readSize;
+            StringBuffer buffer = new StringBuffer();
+            while (((readSize = reader.read(rawBuffer)) != -1) && maxReadSize > 0) {
+                if (readSize > maxReadSize) {
+                    readSize = maxReadSize;
+                }
+                buffer.append(rawBuffer, 0, readSize);
+                maxReadSize -= readSize;
+            }
+
+            Log.d("TAG", buffer.toString());
+            return buffer.toString();
+        }
     }
 
-    public void hideDialog() {
-        if (pDialog.isShowing())
-            pDialog.dismiss();
-    }
-}
 
-class DownloadData extends AsyncTask<String, Void, String> {
-    @Override
-    protected String doInBackground(String... strings) {
-
-        String response = null;
-
-
-        // Building the URL
-        final String BASE_URL = new Config().getRegisterUrl();
-        final String NAME = "name";
-        final String EMAIL = "email";
-        final String PASSWORD = "password";
-
-
-        Uri buildUri = Uri.parse(BASE_URL)
-                .buildUpon()
-                .appendQueryParameter(NAME, strings[0])
-                .appendQueryParameter(EMAIL, strings[1])
-                .appendQueryParameter(PASSWORD, strings[2])
-                .build();
-
-        Log.d("TAG", "URI - " + buildUri);
+    public int parsingResponse(String response) {
 
         try {
-            URL url = new URL(buildUri.toString());
+            JSONObject jObj = new JSONObject(response);
+            /**
+             * If the registration on the server was successful the return should be
+             * {"error":false}
+             * Else, an object for error message is added
+             * Example: {"error":true,"error_msg":"Invalid email format."}
+             * Success of the registration can be checked based on the
+             * object error, where true refers to the existence of an error
+             */
+            boolean error = jObj.getBoolean("error");
 
-            response = downloadUrl(url);
-
-        } catch (MalformedURLException e) {
-            Log.e("TAG", "URL - " + e.toString());
-        } catch (IOException e) {
-            Log.e("TAG", "Download - " + e.toString());
-        }
-        return response;
-
-    }
-
-
-    @Override
-    protected void onPostExecute(String s) {
-
-        Log.d("TAG", "onPostExecute () " + s);
-    }
-
-
-    /**
-     * Given a URL, sets up a connection and gets the HTTP response body from the server.
-     * If the network request is successful, it returns the response body in String form. Otherwise,
-     * it will throw an IOException.
-     */
-
-    private String downloadUrl(URL url) throws IOException {
-
-        InputStream stream = null;
-        //HttpsURLConnection connection = null;
-        HttpURLConnection connection = null;
-        String result = null;
-        try {
-            connection = (HttpURLConnection) url.openConnection();
-            // Timeout for reading InputStream arbitrarily set to 3000ms.
-            connection.setReadTimeout(3000);
-            // Timeout for connection.connect() arbitrarily set to 3000ms.
-            connection.setConnectTimeout(3000);
-            // For this use case, set HTTP method to GET.
-            connection.setRequestMethod("GET");
-            // Already true by default but setting just in case; needs to be true since this request
-            // is carrying an input (response) body.
-            connection.setDoInput(true);
-            // Open communications link (network traffic occurs here).
-            connection.connect();
-
-            int responseCode = connection.getResponseCode();
-            if (responseCode != HttpURLConnection.HTTP_OK) {
-                throw new IOException("HTTP error code: " + responseCode);
+            if (!error) {
+                //No error, return from the server was {"error":false}
+                feedback.setName(name);
+                return feedback.SUCCESS;
+            } else {
+                // The return contains error messages
+                String errorMsg = jObj.getString("error_msg");
+                Log.d("TAG", "errorMsg : " + errorMsg);
+                feedback.setError_message(errorMsg);
+                return feedback.FAIL;
             }
-            // Retrieve the response body as an InputStream.
-            stream = connection.getInputStream();
-
-            if (stream != null) {
-                // Converts Stream to String with max length of 500.
-                result = readStream(stream, 500);
-            }
-        } finally {
-            // Close Stream and disconnect HTTPS connection.
-            if (stream != null) {
-                stream.close();
-            }
-            if (connection != null) {
-                connection.disconnect();
-            }
-        }
-        return result;
-    }
-
-
-    /**
-     * Converts the contents of an InputStream to a String.
-     */
-    public String readStream(InputStream stream, int maxReadSize)
-            throws IOException, UnsupportedEncodingException {
-        Reader reader = null;
-        reader = new InputStreamReader(stream, "UTF-8");
-        char[] rawBuffer = new char[maxReadSize];
-        int readSize;
-        StringBuffer buffer = new StringBuffer();
-        while (((readSize = reader.read(rawBuffer)) != -1) && maxReadSize > 0) {
-            if (readSize > maxReadSize) {
-                readSize = maxReadSize;
-            }
-            buffer.append(rawBuffer, 0, readSize);
-            maxReadSize -= readSize;
+        } catch (JSONException e) {
+            feedback.setError_message(e.toString());
+            return feedback.FAIL;
         }
 
-        Log.d("TAG", buffer.toString());
-        return buffer.toString();
     }
+
 }
+

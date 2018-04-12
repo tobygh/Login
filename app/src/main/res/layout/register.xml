@@ -5,7 +5,7 @@
     android:background="@color/bg_register"
     android:gravity="center"
     android:orientation="vertical"
-    android:padding="10dp" >
+    android:padding="10dp">
 
     <LinearLayout
         android:layout_width="fill_parent"
@@ -13,7 +13,7 @@
         android:layout_gravity="center"
         android:orientation="vertical"
         android:paddingLeft="20dp"
-        android:paddingRight="20dp" >
+        android:paddingRight="20dp">
 
         <EditText
             android:id="@+id/name"
@@ -22,9 +22,10 @@
             android:layout_marginBottom="10dp"
             android:background="@color/input_register_bg"
             android:hint="@string/hint_name"
+            android:inputType="textCapWords"
+            android:maxLength="15"
             android:padding="10dp"
             android:singleLine="true"
-            android:inputType="textCapWords"
             android:textColor="@color/input_register"
             android:textColorHint="@color/input_register_hint" />
 
@@ -36,6 +37,7 @@
             android:background="@color/input_register_bg"
             android:hint="@string/hint_email"
             android:inputType="textEmailAddress"
+            android:maxLength="30"
             android:padding="10dp"
             android:singleLine="true"
             android:textColor="@color/input_register"
@@ -49,6 +51,7 @@
             android:background="@color/input_register_bg"
             android:hint="@string/hint_password"
             android:inputType="textPassword"
+            android:maxLength="20"
             android:padding="10dp"
             android:singleLine="true"
             android:textColor="@color/input_register"

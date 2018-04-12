@@ -1,14 +1,8 @@
 package mg.studio.myapplication;
 
-import android.content.ContentValues;
 import android.content.Context;
 import android.content.SharedPreferences;
-import android.database.Cursor;
-import android.database.sqlite.SQLiteDatabase;
-import android.database.sqlite.SQLiteOpenHelper;
 import android.util.Log;
-
-import java.util.HashMap;
 
 /**
  * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
@@ -19,9 +13,6 @@ import java.util.HashMap;
  * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
  * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
  */
-
-
-//This file was generated on 4/9/18
 
 
 public class SessionManager {
@@ -39,9 +30,9 @@ public class SessionManager {
     int PRIVATE_MODE = 0;
 
     // Shared preferences file name
-    private static final String PREF_NAME = "AndroidHiveLogin";
+    private static final String PREF_NAME = "pref_name";
 
-    private static final String KEY_IS_LOGGEDIN = "isLoggedIn";
+    private static final String KEY_IS_LOGGED_IN = "isLoggedIn";
 
     public SessionManager(Context context) {
         this._context = context;
@@ -51,16 +42,14 @@ public class SessionManager {
 
     public void setLogin(boolean isLoggedIn) {
 
-        editor.putBoolean(KEY_IS_LOGGEDIN, isLoggedIn);
-
-        // commit changes
+        editor.putBoolean(KEY_IS_LOGGED_IN, isLoggedIn);
         editor.commit();
 
         Log.d(TAG, "User login session modified!");
     }
 
     public boolean isLoggedIn(){
-        return pref.getBoolean(KEY_IS_LOGGEDIN, false);
+        return pref.getBoolean(KEY_IS_LOGGED_IN, false);
     }
 }
 

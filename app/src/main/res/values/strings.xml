@@ -1,5 +1,5 @@
 <resources>
-    <string name="app_name">Account</string>
+    <string name="app_name">Login</string>
     <string name="hint_email">Email</string>
     <string name="hint_password">Password</string>
     <string name="hint_name">Username</string>
@@ -11,4 +11,5 @@
     <string name="btn_link_to_register">Create a new account.</string>
     <string name="btn_link_to_login">Log into your account.</string>
     <string name="enter_credentials">Enter your credentials.</string>
+    <string name="account_created">your account has been created.</string>
 </resources>
