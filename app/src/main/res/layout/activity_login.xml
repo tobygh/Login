@@ -19,12 +19,12 @@
             android:id="@+id/display"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
+            android:layout_margin="8dp"
             android:gravity="center"
             android:textColor="@color/white"
             android:textSize="18sp"
-            android:visibility="gone"
             android:textStyle="bold"
-            android:layout_margin="8dp"/>
+            android:visibility="gone" />
 
         <EditText
             android:id="@+id/email"
@@ -38,7 +38,10 @@
             android:padding="10dp"
             android:singleLine="true"
             android:textColor="@color/input_login"
-            android:textColorHint="@color/input_login_hint" />
+            android:textColorHighlight="@color/bg_login"
+            android:textColorHint="@color/input_login_hint"
+            android:textCursorDrawable="@drawable/color_cursor"
+            android:textSelectHandle="@color/bg_login" />
 
         <EditText
             android:id="@+id/password"
@@ -52,7 +55,10 @@
             android:padding="10dp"
             android:singleLine="true"
             android:textColor="@color/input_login"
-            android:textColorHint="@color/input_login_hint" />
+            android:textColorHighlight="@color/bg_login"
+            android:textColorHint="@color/input_login_hint"
+            android:textCursorDrawable="@drawable/color_cursor"
+            android:textSelectHandle="@color/bg_login" />
 
         <!-- Login Button -->
 
@@ -62,8 +68,8 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="20dp"
             android:background="@color/btn_login_bg"
-            android:text="@string/btn_login"
             android:onClick="btnLogin"
+            android:text="@string/btn_login"
             android:textColor="@color/btn_login" />
 
         <!-- Link to Login Screen -->
@@ -74,9 +80,9 @@
             android:layout_height="wrap_content"
             android:layout_marginTop="40dip"
             android:background="@null"
+            android:onClick="btnRegister"
             android:text="@string/btn_link_to_register"
             android:textAllCaps="false"
-            android:onClick="btnRegister"
             android:textColor="@color/white"
             android:textSize="15sp" />
     </LinearLayout>

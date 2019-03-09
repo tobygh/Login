@@ -8,24 +8,27 @@ import android.widget.TextView;
 
 public class MainActivity extends AppCompatActivity {
     private TextView tvName;
-
     private SessionManager session;
+
+
+
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
+        /**
+         * Only logged in users should access this activity
+         */
+        session = new SessionManager(this);
+        if (!session.isLoggedIn()) {
+            logout();
+        }
         setContentView(R.layout.activity_main);
 
         tvName = findViewById(R.id.user_name);
 
 
-        /**
-         * Only logged in users should access this activity
-         */
-        session = new SessionManager(getApplicationContext());
-        if (!session.isLoggedIn()) {
-            logout();
-        }
+
 
         /**
          * If the user just registered an account from Register.class,

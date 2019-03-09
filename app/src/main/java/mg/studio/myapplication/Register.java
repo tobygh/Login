@@ -111,7 +111,6 @@ public class Register extends AppCompatActivity {
 
     /**
      * Register a new user to the server database
-     *
      * @param name     username
      * @param email    email address, which should be unique to the user
      * @param password length should be < 50 characters
@@ -206,6 +205,7 @@ public class Register extends AppCompatActivity {
                 Intent intent = new Intent(getApplication(), Login.class);
                 intent.putExtra("feedback", feedback);
                 startActivity(intent);
+                finish();
             } else {
                 btnRegister.setClickable(true);
                 Toast.makeText(getApplication(), feedback.getError_message(), Toast.LENGTH_SHORT).show();
