@@ -124,7 +124,8 @@ public class Register extends AppCompatActivity {
             String tpwd=userAccount.getString(strings[1],null);
             if (tpwd==null){
                 SharedPreferences.Editor editor=userAccount.edit();
-                //editor.putString(strings[1],strings[2]);
+                editor.putString(strings[1],strings[2]);
+                editor.commit();
                 feedback.setName(strings[0]);
                 return feedback.SUCCESS;
             }

@@ -145,12 +145,15 @@ public class Login extends AppCompatActivity {
         @Override
         protected Integer doInBackground(String... strings) {
             //String email=strings[0],pwd=strings[1];
-            //Log.i("debug","E:"+email+" P:"+pwd);
+
             SharedPreferences userAccount = getSharedPreferences("account",0);
             String pwd=userAccount.getString(strings[0],"");
             feedback=new Feedback();
-            if (pwd==strings[1])
+            Log.i("debug","E:"+strings[0]+" P:"+strings[1]+"aP:"+pwd);
+            if (pwd.equals(strings[1])){
+                feedback.setName(strings[0]);
                 return feedback.SUCCESS;
+            }
             feedback.setError_message("Wrong email or password.");
             return feedback.FAIL;
         }
