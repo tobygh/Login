@@ -3,11 +3,13 @@ package mg.studio.myapplication;
 import android.app.ProgressDialog;
 import android.content.Context;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
 import android.view.View;
+import android.view.ViewDebug;
 import android.view.inputmethod.InputMethodManager;
 import android.widget.Button;
 import android.widget.EditText;
@@ -26,16 +28,6 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-
-/**
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
- * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 
 
 public class Login extends AppCompatActivity {
@@ -120,8 +112,8 @@ public class Login extends AppCompatActivity {
 
             //Todo: need to check weather the user has Internet before attempting checking the data
             // Start fetching the data from the Internet
-            new OnlineCredentialValidation().execute(email,password);
-
+            //new OnlineCredentialValidation().execute(email,password);
+            new OfflineCredentialValidation().execute(email,password);
 
         } else {
             // Prompt user to enter credentials
@@ -149,7 +141,38 @@ public class Login extends AppCompatActivity {
      *
      */
 
+    class OfflineCredentialValidation extends AsyncTask<String,Void,Integer>{
+        @Override
+        protected Integer doInBackground(String... strings) {
+            //String email=strings[0],pwd=strings[1];
+            //Log.i("debug","E:"+email+" P:"+pwd);
+            SharedPreferences userAccount = getSharedPreferences("account",0);
+            String pwd=userAccount.getString(strings[0],"");
+            feedback=new Feedback();
+            if (pwd==strings[1])
+                return feedback.SUCCESS;
+            feedback.setError_message("Wrong email or password.");
+            return feedback.FAIL;
+        }
+        @Override
+        protected void onPostExecute(Integer mFeedback) {
+            super.onPostExecute(mFeedback);
+            if (progressDialog.isShowing()) progressDialog.dismiss();
+            if (mFeedback == feedback.SUCCESS) {
+                // Update the session
+                session.setLogin(true);
+                // Move the user to MainActivity and pass in the User name which was form the server
+                Intent intent = new Intent(getApplication(), MainActivity.class);
+                intent.putExtra("feedback", feedback);
+                startActivity(intent);
+            } else {
+                // Allow the user to click the button
+                loginButton.setClickable(true);
+                Toast.makeText(getApplication(), feedback.getError_message(), Toast.LENGTH_SHORT).show();
+            }
+        }
 
+    }
 
     class OnlineCredentialValidation extends AsyncTask<String, Void, Integer> {
 
@@ -215,9 +238,6 @@ public class Login extends AppCompatActivity {
                 return parsingFeedback;
             }
         }
-
-
-
 
         @Override
         protected void onPostExecute(Integer mFeedback) {

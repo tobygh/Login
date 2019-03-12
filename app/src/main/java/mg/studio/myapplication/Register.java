@@ -2,6 +2,7 @@ package mg.studio.myapplication;
 
 import android.app.ProgressDialog;
 import android.content.Intent;
+import android.content.SharedPreferences;
 import android.os.AsyncTask;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
@@ -23,17 +24,6 @@ import java.io.Reader;
 import java.net.HttpURLConnection;
 import java.net.MalformedURLException;
 import java.net.URL;
-
-
-/**
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND,
- * EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT.
- * IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM,
- * DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT,
- * TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE
- * OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
- */
 
 
 public class Register extends AppCompatActivity {
@@ -121,9 +111,43 @@ public class Register extends AppCompatActivity {
         pDialog.setMessage("Registering ...");
         if (!pDialog.isShowing()) pDialog.show();
         //Todo: Need to check Internet connection
-        new DownloadData().execute(name, email, password);
+        //new DownloadData().execute(name, email, password);
+        new getData().execute(name,email,password);
 
+    }
+    class getData extends  AsyncTask<String, Void, Integer> {
+        @Override
+        protected Integer doInBackground(String... strings) {
+            //name email pwd
+            feedback = new Feedback();
+            SharedPreferences userAccount = getSharedPreferences("account",0);
+            String tpwd=userAccount.getString(strings[1],null);
+            if (tpwd==null){
+                SharedPreferences.Editor editor=userAccount.edit();
+                //editor.putString(strings[1],strings[2]);
+                feedback.setName(strings[0]);
+                return feedback.SUCCESS;
+            }
+            else {
+                feedback.setError_message(strings[1]+" "+tpwd+" already exists.");
+                return feedback.FAIL;
+            }
+        }
+        @Override
+        protected void onPostExecute(Integer mFeedback) {
+            super.onPostExecute(mFeedback);
+            if (pDialog.isShowing()) pDialog.dismiss();
+            if (mFeedback == feedback.SUCCESS) {
+                Intent intent = new Intent(getApplication(), Login.class);
+                intent.putExtra("feedback", feedback);
+                startActivity(intent);
+                finish();
+            } else {
+                btnRegister.setClickable(true);
+                Toast.makeText(getApplication(), feedback.getError_message(), Toast.LENGTH_SHORT).show();
+            }
 
+        }
     }
 
 
